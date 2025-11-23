@@ -3,7 +3,7 @@ import {
   Newspaper, RefreshCw, DollarSign, ExternalLink, TrendingUp, Clock, 
   Share2, Menu, X, Info, MessageCircle, Send, ThumbsUp, User, Globe, 
   Cpu, Briefcase, Vote, Sun, Cloud, CloudRain, Wind, MapPin, Settings, 
-  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles
+  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles, ArrowRight
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -43,8 +43,6 @@ const NEWS_SOURCES = [
 ];
 
 // --- AI CONTENT GENERATOR ---
-// This function simulates an AI writing a full article from a summary.
-// In a production app, you would replace this logic with a real fetch to the Gemini API.
 const generateFullArticle = (title, summary, source) => {
   const intro = `(AI Reporting) – ${summary} This development marks a significant turning point in the ongoing narrative surrounding this issue.`;
   
@@ -94,14 +92,21 @@ const WeatherWidget = () => {
   );
 };
 
-const ArticleReader = ({ article, onClose }) => {
+// --- UPDATED ARTICLE READER ---
+const ArticleReader = ({ article, allArticles, onClose, onSelectArticle }) => {
   const [fullContent, setFullContent] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Find suggested articles (exclude current one)
+  const suggestedArticles = allArticles
+    .filter(a => a.id !== article.id)
+    .slice(0, 3);
+
   useEffect(() => {
-    // Simulate AI Generation Delay
+    setLoading(true);
+    setFullContent(""); 
+    
     const timer = setTimeout(() => {
-      // If RSS provided full content, use it. Otherwise, generate it.
       const content = article.content && article.content.length > 200 
         ? article.content 
         : generateFullArticle(article.title, article.summary, article.source);
@@ -115,54 +120,114 @@ const ArticleReader = ({ article, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-4xl min-h-screen md:min-h-0 md:my-8 rounded-none md:rounded-2xl shadow-2xl flex flex-col relative">
-        <button onClick={onClose} className="absolute top-4 right-4 bg-white/90 hover:bg-white p-2 rounded-full text-gray-800 z-10 shadow-lg"><X className="h-6 w-6" /></button>
+      
+      {/* SINGLE WHITE CARD CONTAINER */}
+      <div className="bg-white w-full max-w-4xl min-h-screen md:min-h-0 md:my-8 rounded-none md:rounded-2xl shadow-2xl flex flex-col relative overflow-hidden">
         
+        {/* CLOSE BUTTON */}
+        <button onClick={onClose} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full z-20 backdrop-blur-md transition-all">
+          <X className="h-6 w-6" />
+        </button>
+        
+        {/* HERO IMAGE */}
         <div className="h-64 md:h-80 w-full shrink-0 relative bg-gray-900">
-          <img src={article.image || "https://source.unsplash.com/random/800x600?news"} alt={article.title} className="w-full h-full object-cover opacity-80" />
-          <div className="absolute bottom-0 left-0 p-8 bg-gradient-to-t from-black/90 to-transparent w-full">
-            <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded mb-2 inline-block">{article.category}</span>
-            <h1 className="text-2xl md:text-4xl font-bold text-white leading-tight">{article.title}</h1>
+          <img src={article.image || "https://source.unsplash.com/random/800x600?news"} alt={article.title} className="w-full h-full object-cover opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+          <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full">
+            <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 inline-block shadow-sm">{article.category}</span>
+            <h1 className="text-2xl md:text-4xl font-bold text-white leading-tight shadow-sm max-w-2xl">{article.title}</h1>
           </div>
         </div>
 
-        <div className="p-8 md:p-12">
-          <div className="flex items-center text-sm text-gray-500 mb-8 border-b pb-4">
-             <img src={`https://ui-avatars.com/api/?name=${article.source}&background=random`} className="w-6 h-6 rounded-full mr-2" alt="icon"/>
-             <span className="font-bold text-gray-900 mr-4">{article.source}</span>
-             <Clock className="h-4 w-4 mr-2" /> {article.time}
-          </div>
-
-          <div className="prose prose-lg text-gray-800 max-w-none">
-            {loading ? (
-              <div className="space-y-4 animate-pulse">
-                <div className="flex items-center text-blue-600 font-medium mb-4">
-                  <Sparkles className="h-5 w-5 mr-2 animate-spin" />
-                  AI Agent is writing full report from {article.source} data...
-                </div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-4/6"></div>
-              </div>
-            ) : (
-              <>
-                 <p className="text-xl font-medium leading-relaxed mb-6 border-l-4 border-blue-500 pl-4 italic bg-gray-50 p-4 rounded-r-lg">
-                   "{article.summary}"
-                 </p>
-                 <div className="whitespace-pre-line leading-relaxed">
-                   {fullContent}
+        {/* SCROLLABLE CONTENT AREA */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 md:p-10 max-w-3xl mx-auto">
+            
+            {/* METADATA */}
+            <div className="flex items-center text-sm text-gray-500 mb-8 border-b border-gray-100 pb-6">
+               <img src={`https://ui-avatars.com/api/?name=${article.source}&background=random`} className="w-8 h-8 rounded-full mr-3 shadow-sm" alt="icon"/>
+               <div>
+                 <p className="font-bold text-gray-900">{article.source}</p>
+                 <div className="flex items-center text-xs text-gray-400 mt-0.5">
+                   <Clock className="h-3 w-3 mr-1" /> {article.time}
+                   <span className="mx-2">•</span>
+                   <Globe className="h-3 w-3 mr-1" /> Global News
                  </div>
-              </>
-            )}
+               </div>
+            </div>
+
+            {/* ARTICLE BODY */}
+            <div className="prose prose-lg text-gray-800 max-w-none leading-relaxed">
+              {loading ? (
+                <div className="space-y-6 animate-pulse mt-8">
+                  <div className="flex items-center text-blue-600 font-medium bg-blue-50 p-4 rounded-lg">
+                    <Sparkles className="h-5 w-5 mr-3 animate-spin" />
+                    AI Agent is generating full report...
+                  </div>
+                  <div className="h-4 bg-gray-100 rounded w-full"></div>
+                  <div className="h-4 bg-gray-100 rounded w-full"></div>
+                  <div className="h-4 bg-gray-100 rounded w-5/6"></div>
+                </div>
+              ) : (
+                <>
+                   <p className="font-medium text-xl text-gray-900 mb-8 leading-8">
+                     {article.summary}
+                   </p>
+                   <div className="whitespace-pre-line text-gray-700">
+                     {fullContent}
+                   </div>
+                </>
+              )}
+            </div>
+
+            {/* SOURCE REFERENCE (INSIDE THE WHITE BOX) */}
+            <div className="mt-12 p-6 bg-gray-50 rounded-xl border border-gray-100">
+              <h4 className="font-bold text-gray-900 mb-2 flex items-center">
+                <Info className="h-4 w-4 mr-2 text-blue-500" /> Source Reference
+              </h4>
+              <p className="text-sm text-gray-600 mb-4">This article was aggregated via RSS feed. View the original reporting below:</p>
+              <a href={article.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                Read original on {article.source} <ExternalLink className="h-4 w-4 ml-2" />
+              </a>
+            </div>
+
           </div>
 
-          <div className="mt-12 p-6 bg-gray-50 rounded-xl border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-2">Source Reference</h4>
-            <p className="text-sm text-gray-600 mb-4">This article was aggregated via RSS. View the original source below:</p>
-            <a href={article.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-blue-600 font-bold hover:underline">
-              Read original on {article.source} <ExternalLink className="h-4 w-4 ml-2" />
-            </a>
+          {/* SUGGESTED NEWS (SCROLLABLE AT BOTTOM) */}
+          <div className="bg-gray-50 border-t border-gray-200 py-10 px-6 md:px-10">
+            <div className="max-w-3xl mx-auto">
+              <h3 className="font-bold text-gray-900 mb-6 flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2" /> Read Next
+              </h3>
+              <div className="grid gap-4">
+                {suggestedArticles.map((item) => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => onSelectArticle(item)}
+                    className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer flex gap-4 group"
+                  >
+                    <div className="w-20 h-20 shrink-0 bg-gray-200 rounded-lg overflow-hidden">
+                       <img src={item.image} className="w-full h-full object-cover" alt="thumb" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight mb-2">
+                        {item.title}
+                      </h4>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <span className="font-medium text-gray-700">{item.source}</span>
+                        <span className="mx-2">•</span>
+                        {item.time}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">
+                      <ArrowRight className="h-5 w-5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -174,6 +239,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [activeTab, setActiveTab] = useState("Home");
+  const [searchQuery, setSearchQuery] = useState(""); // NEW: Search State
   const [newsletterEmail, setNewsletterEmail] = useState("");
 
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -198,7 +264,7 @@ const App = () => {
             category: source.category,
             summary: item.description ? item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + "..." : "Click to read full coverage...",
             link: item.link,
-            content: item.content // We capture this, but RSS often leaves it empty
+            content: item.content
           }));
         }
         return [];
@@ -235,13 +301,33 @@ const App = () => {
     }
   };
 
-  const displayArticles = activeTab === "Home" ? articles : articles.filter(a => a.category === activeTab || activeTab === "For you");
+  // --- ADVANCED FILTERING LOGIC ---
+  const displayArticles = articles.filter(article => {
+    // 1. Search Filter (Takes Priority)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        article.title.toLowerCase().includes(q) || 
+        article.summary.toLowerCase().includes(q) ||
+        article.source.toLowerCase().includes(q)
+      );
+    }
+    // 2. Tab Filter
+    return activeTab === "Home" ? true : (article.category === activeTab || activeTab === "For you");
+  });
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
       
       {/* READER MODAL */}
-      {selectedArticle && <ArticleReader article={selectedArticle} onClose={() => setSelectedArticle(null)} />}
+      {selectedArticle && (
+        <ArticleReader 
+          article={selectedArticle} 
+          allArticles={articles}
+          onClose={() => setSelectedArticle(null)}
+          onSelectArticle={setSelectedArticle} 
+        />
+      )}
 
       {/* HEADER */}
       <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
@@ -251,9 +337,16 @@ const App = () => {
              <span className="text-2xl tracking-tighter text-gray-700">News<span className="font-bold text-blue-600">AI</span></span>
           </div>
           
+          {/* SEARCH BAR */}
           <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            <input type="text" placeholder="Search global news..." className="w-full bg-gray-100 rounded-lg py-2.5 pl-10 pr-4 focus:bg-white focus:ring-2 ring-blue-100 outline-none transition-all" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search global news..." 
+              className="w-full bg-gray-100 rounded-lg py-2.5 pl-10 pr-4 focus:bg-white focus:ring-2 ring-blue-100 outline-none transition-all" 
+            />
           </div>
 
           <div className="flex items-center gap-3">
@@ -267,7 +360,7 @@ const App = () => {
         {/* TABS */}
         <div className="max-w-7xl mx-auto px-4 flex items-center gap-6 overflow-x-auto py-3 scrollbar-hide text-sm font-medium text-gray-500 border-b border-gray-100">
           {["Home", "World", "Politics", "Technology", "Sports", "Entertainment", "Business"].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`whitespace-nowrap pb-2 border-b-2 transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-800'}`}>
+            <button key={tab} onClick={() => { setActiveTab(tab); setSearchQuery(""); }} className={`whitespace-nowrap pb-2 border-b-2 transition-colors ${activeTab === tab && !searchQuery ? 'border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-800'}`}>
               {tab}
             </button>
           ))}
@@ -279,13 +372,17 @@ const App = () => {
         {/* LEFT: NEWS FEED (66%) */}
         <div className="lg:col-span-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-light text-gray-800">Your briefing</h1>
+            <h1 className="text-3xl font-light text-gray-800">
+              {searchQuery ? `Results for "${searchQuery}"` : "Your briefing"}
+            </h1>
             <p className="text-gray-500 text-sm mt-1">{currentDate}</p>
           </div>
 
           <div className="space-y-6">
             {loading && articles.length === 0 ? (
                <div className="text-center py-20 text-gray-400">Connecting to global satellites...</div>
+            ) : displayArticles.length === 0 ? (
+               <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-xl">No articles found matching your search.</div>
             ) : (
                 displayArticles.map((article, idx) => (
                   <div key={idx} onClick={() => setSelectedArticle(article)} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row gap-6 group">
