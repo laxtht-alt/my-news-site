@@ -11,40 +11,33 @@ import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/fire
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 
 // --- CONFIGURATION ---
+// Hardcoded configuration for local development to avoid "no-undef" errors
+const firebaseConfig = {
+  apiKey: "AIzaSyCr50KAccK3MeENaqZYaZBjTPbRSHmtwS0", 
+  authDomain: "newsai-portal.firebaseapp.com",
+  projectId: "newsai-portal",
+  storageBucket: "newsai-portal.firebasestorage.app",
+  messagingSenderId: "99035161662",
+  appId: "1:99035161662:web:a540b69d1af42f635d1d6f"
+};
+
+// Initialize Firebase
 let db, auth;
-// Default appId to the one from the screenshot as fallback, but prefer the environment variable
-let appId = typeof __app_id !== 'undefined' ? __app_id : 'newsai-portal'; 
+// Use the projectId as the default appId for storage paths
+const appId = "newsai-portal";
 
 try {
-  // PRIORITY 1: Try to get config from the environment (Correct for Preview/Live)
-  let firebaseConfig;
-  
-  if (typeof __firebase_config !== 'undefined') {
-    firebaseConfig = JSON.parse(__firebase_config);
-  } else {
-    // PRIORITY 2: Fallback to hardcoded keys (For Local Dev if env vars missing)
-    firebaseConfig = {
-      apiKey: "AIzaSyCr50KAccK3MeENaqZYaZBjTPbRSHmtwS0", 
-      authDomain: "newsai-portal.firebaseapp.com",
-      projectId: "newsai-portal",
-      storageBucket: "newsai-portal.firebasestorage.app",
-      messagingSenderId: "99035161662",
-      appId: "1:99035161662:web:a540b69d1af42f635d1d6f"
-    };
-  }
-
-  // Initialize if we have a key
-  if (firebaseConfig && firebaseConfig.apiKey) {
+  if (firebaseConfig.apiKey) {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
   }
 } catch (e) {
-  console.error("Firebase Configuration Error:", e);
+  console.log("Firebase not configured.");
 }
 
 // --- GEMINI API SETUP ---
-const apiKey = ""; // API Key injected by environment
+const apiKey = ""; // API Key injected by environment or paste your key here
 
 const callGeminiAPI = async (prompt) => {
   if (!apiKey) return null;
