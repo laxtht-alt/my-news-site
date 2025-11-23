@@ -3,7 +3,7 @@ import {
   Newspaper, RefreshCw, DollarSign, ExternalLink, TrendingUp, Clock, 
   Share2, Menu, X, Info, MessageCircle, Send, ThumbsUp, User, Globe, 
   Cpu, Briefcase, Vote, Sun, Cloud, CloudRain, Wind, MapPin, Settings, 
-  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles, ArrowRight, Zap, Radio, Film, Activity
+  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles, ArrowRight, Zap, Radio, Film, Activity, Image as ImageIcon
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -33,7 +33,7 @@ try {
 }
 
 // --- GEMINI API SETUP ---
-const apiKey = "AIzaSyA2wcHNOMl3zBkmeVv-JCTnrilnoCit_To"; // API Key injected by environment
+const apiKey = ""; // API Key injected by environment
 
 const callGeminiAPI = async (prompt) => {
   if (!apiKey) return null;
@@ -49,45 +49,21 @@ const callGeminiAPI = async (prompt) => {
   } catch (error) { return null; }
 };
 
-// --- EXPANDED GLOBAL SOURCES (25+ Sources) ---
+// --- GLOBAL SOURCES ---
 const NEWS_SOURCES = [
-  // SCIENCE
   { name: "NASA", url: "https://www.nasa.gov/rss/dyn/breaking_news.rss", category: "Science" },
   { name: "Science Daily", url: "https://www.sciencedaily.com/rss/top_news.xml", category: "Science" },
-  { name: "Space.com", url: "https://www.space.com/feeds/all", category: "Science" },
-  { name: "Scientific American", url: "http://rss.sciam.com/ScientificAmerican-Global", category: "Science" },
-
-  // TECHNOLOGY
   { name: "TechCrunch", url: "https://techcrunch.com/feed/", category: "Technology" },
   { name: "The Verge", url: "https://www.theverge.com/rss/index.xml", category: "Technology" },
-  { name: "Wired", url: "https://www.wired.com/feed/rss", category: "Technology" },
-  { name: "BBC Tech", url: "http://feeds.bbci.co.uk/news/technology/rss.xml", category: "Technology" },
-  { name: "Engadget", url: "https://www.engadget.com/rss.xml", category: "Technology" },
-
-  // SPORTS
   { name: "ESPN", url: "https://www.espn.com/espn/rss/news", category: "Sports" },
   { name: "BBC Sport", url: "http://feeds.bbci.co.uk/sport/rss.xml", category: "Sports" },
-  { name: "CBS Sports", url: "https://www.cbssports.com/rss/headlines/", category: "Sports" },
-  { name: "Sky Sports", url: "https://www.skysports.com/rss/12040", category: "Sports" },
-
-  // ENTERTAINMENT
   { name: "IGN", url: "https://feeds.ign.com/ign/news", category: "Entertainment" },
   { name: "Variety", url: "https://variety.com/feed/", category: "Entertainment" },
-  { name: "Hollywood Reporter", url: "https://www.hollywoodreporter.com/feed/", category: "Entertainment" },
-  { name: "Rolling Stone", url: "https://www.rollingstone.com/feed/", category: "Entertainment" },
-
-  // BUSINESS
   { name: "CNBC", url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147", category: "Business" },
   { name: "Reuters Business", url: "http://feeds.reuters.com/reuters/businessNews", category: "Business" },
-  { name: "Forbes", url: "https://www.forbes.com/most-popular/feed/", category: "Business" },
-  { name: "WSJ Markets", url: "https://feeds.a.dj.com/rss/RSSMarketsMain.xml", category: "Business" },
-  
-  // WORLD & POLITICS
   { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml", category: "World" },
   { name: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml", category: "World" },
-  { name: "NY Times", url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", category: "Politics" },
-  { name: "The Guardian", url: "https://www.theguardian.com/world/rss", category: "World" },
-  { name: "CNN World", url: "http://rss.cnn.com/rss/edition_world.rss", category: "World" }
+  { name: "NY Times", url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", category: "Politics" }
 ];
 
 // --- COMPONENTS ---
@@ -134,7 +110,7 @@ const LiveAiTicker = ({ articles }) => {
     const interval = setInterval(() => {
       const randomArticle = articles[Math.floor(Math.random() * articles.length)];
       if(randomArticle) setInsight(`BREAKING ANALYSIS: ${randomArticle.title.slice(0, 60)}... Impacting ${randomArticle.category} sector.`);
-    }, 3000); // Faster ticker updates
+    }, 5000);
     return () => clearInterval(interval);
   }, [articles]);
 
@@ -146,6 +122,54 @@ const LiveAiTicker = ({ articles }) => {
       </div>
       <div className="h-4 w-px bg-gray-700 mx-2"></div>
       <span className="truncate animate-fade-in">{insight}</span>
+    </div>
+  );
+};
+
+const SmartImage = ({ article }) => {
+  const [imgSrc, setImgSrc] = useState(article.image);
+  const [hasError, setHasError] = useState(false);
+
+  // Fallback images by category
+  const fallbacks = {
+    "Science": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&q=80&w=800",
+    "Technology": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800",
+    "Sports": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800",
+    "Entertainment": "https://images.unsplash.com/photo-1499364615650-ec38552f4f34?auto=format&fit=crop&q=80&w=800",
+    "Business": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800",
+    "World": "https://images.unsplash.com/photo-1529101091760-6149d4c46b29?auto=format&fit=crop&q=80&w=800",
+    "Politics": "https://images.unsplash.com/photo-1541872703-74c5963631df?auto=format&fit=crop&q=80&w=800"
+  };
+
+  const handleError = () => {
+    if (!hasError) {
+      setHasError(true);
+      // If the original image failed, try the fallback for that category
+      setImgSrc(fallbacks[article.category] || fallbacks["World"]);
+    }
+  };
+
+  // If no image was provided initially, use fallback immediately
+  useEffect(() => {
+    if (!article.image) {
+      setImgSrc(fallbacks[article.category] || fallbacks["World"]);
+    }
+  }, [article]);
+
+  return (
+    <div className="w-full sm:w-32 h-32 shrink-0 relative overflow-hidden rounded-lg bg-gray-100">
+      <img 
+        src={imgSrc} 
+        alt={article.title} 
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+        onError={handleError}
+      />
+      {/* Overlay if it's a fallback to make it look styled */}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+          <ImageIcon className="h-6 w-6 text-white/80" />
+        </div>
+      )}
     </div>
   );
 };
@@ -237,7 +261,9 @@ const ArticleReader = ({ article, allArticles, onClose, onSelectArticle }) => {
               <div className="grid gap-4">
                 {suggestedArticles.map((item) => (
                   <div key={item.id} onClick={() => onSelectArticle(item)} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer flex gap-4 group">
-                    <div className="w-20 h-20 shrink-0 bg-gray-200 rounded-lg overflow-hidden"><img src={item.image} className="w-full h-full object-cover" alt="thumb" /></div>
+                    <div className="w-20 h-20 shrink-0 bg-gray-200 rounded-lg overflow-hidden">
+                      <SmartImage article={item} />
+                    </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight mb-2">{item.title}</h4>
                       <div className="flex items-center text-xs text-gray-500"><span className="font-medium text-gray-700">{item.source}</span></div>
@@ -263,9 +289,9 @@ const App = () => {
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // --- GLOBAL FETCH ENGINE ---
-  const fetchNews = async (currentList) => {
+  const fetchNews = async () => {
     setLoading(true);
-    let newBatch = [];
+    let allNews = [];
 
     const promises = NEWS_SOURCES.map(async (source) => {
       try {
@@ -278,7 +304,8 @@ const App = () => {
             title: item.title,
             source: source.name,
             time: new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }),
-            image: item.enclosure?.link || item.thumbnail || `https://source.unsplash.com/random/800x600?${source.category}`,
+            // Pass raw image/enclosure/thumbnail if available, SmartImage component handles fallback
+            image: item.thumbnail || item.enclosure?.link, 
             category: source.category,
             summary: item.description ? item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + "..." : "Click to read full coverage...",
             link: item.link,
@@ -290,21 +317,16 @@ const App = () => {
     });
 
     const results = await Promise.all(promises);
-    newBatch = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    allNews = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)); 
     
-    // MERGE LOGIC: Add new stories to existing list without duplicates
-    setArticles(prev => {
-        const existingIds = new Set(prev.map(a => a.title)); // Use Title as ID to catch dupes
-        const filteredNew = newBatch.filter(a => !existingIds.has(a.title));
-        return [...filteredNew, ...prev]; // Add new on top, keep old at bottom
-    });
-    
+    const uniqueNews = Array.from(new Map(allNews.map(item => [item.title, item])).values());
+    setArticles(uniqueNews.slice(0, 150));
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchNews(); // Initial fetch
-    const interval = setInterval(fetchNews, 10000); // Aggressive 10s updates
+    fetchNews();
+    const interval = setInterval(fetchNews, 45000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -347,13 +369,13 @@ const App = () => {
           
           <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={`Search ${articles.length} articles...`} className="w-full bg-gray-100 rounded-lg py-2.5 pl-10 pr-4 focus:bg-white focus:ring-2 ring-blue-100 outline-none transition-all" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search 20+ global sources..." className="w-full bg-gray-100 rounded-lg py-2.5 pl-10 pr-4 focus:bg-white focus:ring-2 ring-blue-100 outline-none transition-all" />
           </div>
 
           <div className="flex items-center gap-3">
              <button onClick={fetchNews} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-all">
                 {loading ? <Loader className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                {loading ? "Scanning..." : "Refresh"}
+                {loading ? "Updating..." : "Refresh"}
              </button>
           </div>
         </div>
@@ -382,7 +404,7 @@ const App = () => {
             {loading && articles.length === 0 ? (
                <div className="text-center py-20 text-gray-400 flex flex-col items-center"><Loader className="h-8 w-8 animate-spin mb-4 text-blue-500" />Connecting to global satellites...</div>
             ) : displayArticles.length === 0 ? (
-               <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-xl">No articles found yet. Waiting for updates...</div>
+               <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-xl">No recent articles found in this category.</div>
             ) : (
                 displayArticles.map((article, idx) => (
                   <div key={idx} onClick={() => setSelectedArticle(article)} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row gap-6 group">
@@ -394,11 +416,8 @@ const App = () => {
                         <h3 className="text-xl font-serif font-medium text-gray-900 leading-tight mb-2 group-hover:text-blue-700">{article.title}</h3>
                         <p className="text-sm text-gray-600 line-clamp-2">{article.summary}</p>
                      </div>
-                     {article.image && (
-                       <div className="w-full sm:w-32 h-32 shrink-0">
-                         <img src={article.image} className="w-full h-full object-cover rounded-lg bg-gray-100" onError={(e) => e.target.style.display='none'} alt="thumb" />
-                       </div>
-                     )}
+                     {/* SMART IMAGE (Guaranteed Thumbnail) */}
+                     <SmartImage article={article} />
                   </div>
                 ))
             )}
