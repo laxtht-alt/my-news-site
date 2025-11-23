@@ -1,31 +1,33 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Newspaper, RefreshCw, DollarSign, ExternalLink, TrendingUp, Clock, 
-  Share2, Menu, X, Info, MessageCircle, Send, ThumbsUp, User, Globe, 
-  Cpu, Briefcase, Vote, Sun, Cloud, CloudRain, Wind, MapPin, Settings, 
-  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles, ArrowRight, Zap, Radio, Film, Activity, Image as ImageIcon, ChevronDown, BookOpen, Moon, Heart, Skull, History, BarChart3, TrendingDown, Coins, Gamepad2, Coffee, Bitcoin
+  Newspaper, RefreshCw, DollarSign, ExternalLink, TrendingUp, 
+  Menu, X, Info, Vote, Sun, MapPin, Search, Mail, Loader, 
+  Sparkles, ArrowRight, Zap, Radio, Film, Activity, 
+  BookOpen, Moon, Skull, History, TrendingDown, Gamepad2, 
+  Coffee, Bitcoin
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 
 // --- CONFIGURATION ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCr50KAccK3meENaqZYazBjtPbRSHmtwS0", 
-  authDomain: "newsai-portal.firebaseapp.com",
-  projectId: "newsai-portal",
-  storageBucket: "newsai-portal.firebasestorage.app",
-  messagingSenderId: "99035161662",
-  appId: "1:99035161662:web:a540b69d1af42f635d1d6f"
-};
+// Initialize Firebase with environment variables if available
+let db, auth;
+let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-// Initialize Firebase
-let db;
 try {
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+    apiKey: "AIzaSyCr50KAccK3meENaqZYazBjtPbRSHmtwS0", 
+    authDomain: "newsai-portal.firebaseapp.com",
+    projectId: "newsai-portal",
+    storageBucket: "newsai-portal.firebasestorage.app",
+    messagingSenderId: "99035161662",
+    appId: "1:99035161662:web:a540b69d1af42f635d1d6f"
+  };
+  
   if (firebaseConfig.apiKey) {
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    signInAnonymously(auth).catch(console.error);
+    auth = getAuth(app);
     db = getFirestore(app);
   }
 } catch (e) {
@@ -49,7 +51,7 @@ const callGeminiAPI = async (prompt) => {
   } catch (error) { return null; }
 };
 
-// --- GLOBAL SOURCES (UPDATED WITH NEW FEEDS) ---
+// --- GLOBAL SOURCES ---
 const NEWS_SOURCES = [
   // Science & Tech
   { name: "NASA", url: "https://www.nasa.gov/rss/dyn/breaking_news.rss", category: "Science" },
@@ -59,7 +61,7 @@ const NEWS_SOURCES = [
   // Sports
   { name: "ESPN", url: "https://www.espn.com/espn/rss/news", category: "Sports" },
   
-  // Entertainment & Gaming (Moved IGN to Gaming)
+  // Entertainment & Gaming
   { name: "Variety", url: "https://variety.com/feed/", category: "Entertainment" },
   { name: "Kotaku", url: "https://kotaku.com/rss", category: "Gaming" },
   { name: "PC Gamer", url: "https://www.pcgamer.com/rss/", category: "Gaming" },
@@ -85,8 +87,6 @@ const getDailySeed = () => {
   const d = new Date();
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 };
-
-// ... Existing Generators (Conspiracy, Movie, Market, Health, Quotes, History) ...
 
 const generateConspiracies = () => {
   const seed = getDailySeed();
@@ -227,8 +227,6 @@ const generateHistoryEvents = () => {
   }
   return list.sort((a,b) => a.year - b.year);
 };
-
-// --- NEW GENERATORS FOR NEW CATEGORIES ---
 
 const generateGameReviews = () => {
   const seed = getDailySeed();
@@ -441,7 +439,7 @@ const LiveAiTicker = ({ articles }) => {
 // --- PAGES ---
 
 // 1. MARKETS (EXISTING)
-const MarketsPage = () => {
+const MarketsPage = ({ onArticleClick }) => {
   const [coins, setCoins] = useState([
     { name: "Bitcoin", sym: "BTC", price: 64230, change: 2.4, color: "text-orange-500", data: [60,62,61,63,64,65,64] },
     { name: "Ethereum", sym: "ETH", price: 3450, change: -1.2, color: "text-purple-500", data: [35,36,35,34,33,34,34] },
@@ -490,7 +488,7 @@ const MarketsPage = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Newspaper className="h-6 w-6 mr-2 text-blue-600"/> Financial News Wire</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {news.map((item, i) => (
-             <div key={i} className="flex bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 group hover:shadow-md transition cursor-pointer">
+             <div key={i} onClick={() => onArticleClick(item)} className="flex bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 group hover:shadow-md transition cursor-pointer">
                 <div className="w-1/3 relative overflow-hidden"><img src={item.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="market news" /></div>
                 <div className="w-2/3 p-4 flex flex-col justify-between">
                    <div>
@@ -534,7 +532,7 @@ const HistoryPage = () => {
 };
 
 // 3. CONSPIRACY THEORIES (EXISTING)
-const ConspiracyPage = () => {
+const ConspiracyPage = ({ onArticleClick }) => {
   const theories = useMemo(() => generateConspiracies(), []);
   return (
     <div className="p-6">
@@ -544,7 +542,7 @@ const ConspiracyPage = () => {
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {theories.map(t => (
-          <div key={t.id} className="bg-gray-900 text-white rounded-xl overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all cursor-pointer group">
+          <div key={t.id} onClick={() => onArticleClick(t)} className="bg-gray-900 text-white rounded-xl overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all cursor-pointer group">
             <div className="h-48 overflow-hidden"><img src={t.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="theory" onError={(e) => e.target.src=`https://picsum.photos/seed/${t.id}/800/600`} /></div>
             <div className="p-5">
               <h3 className="text-xl font-bold mb-2 text-purple-300">{t.title}</h3>
@@ -558,7 +556,7 @@ const ConspiracyPage = () => {
 };
 
 // 4. GAMING (NEW)
-const GamingPage = ({ articles }) => {
+const GamingPage = ({ articles, onArticleClick }) => {
   const reviews = useMemo(() => generateGameReviews(), []);
   const gamingNews = articles.filter(a => a.category === "Gaming");
 
@@ -573,7 +571,7 @@ const GamingPage = ({ articles }) => {
       <h2 className="text-xl font-bold mb-4 flex items-center text-emerald-400"><Sparkles className="h-4 w-4 mr-2"/> Top Critic Reviews</h2>
       <div className="grid md:grid-cols-4 gap-4 mb-10">
         {reviews.map((game, i) => (
-          <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-emerald-500/50 transition-all relative">
+          <div key={i} onClick={() => onArticleClick(game)} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-emerald-500/50 transition-all relative cursor-pointer">
             <div className="absolute top-2 right-2 bg-emerald-600 text-white font-bold text-sm px-2 py-1 rounded shadow-lg z-10">{game.score}</div>
             <div className="h-32 overflow-hidden"><img src={game.image} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="game" /></div>
             <div className="p-4">
@@ -588,7 +586,7 @@ const GamingPage = ({ articles }) => {
       <h2 className="text-xl font-bold mb-4 flex items-center text-white"><Zap className="h-4 w-4 mr-2"/> Latest Headlines</h2>
       <div className="space-y-4">
         {gamingNews.length > 0 ? gamingNews.map((news, i) => (
-          <div key={i} className="flex bg-slate-900/50 border border-slate-800 p-4 rounded-xl hover:bg-slate-800 transition cursor-pointer gap-4 items-center">
+          <div key={i} onClick={() => onArticleClick(news)} className="flex bg-slate-900/50 border border-slate-800 p-4 rounded-xl hover:bg-slate-800 transition cursor-pointer gap-4 items-center group">
             <div className="w-24 h-16 bg-slate-800 rounded overflow-hidden shrink-0">
                <img src={news.image} className="w-full h-full object-cover" alt="thumb" onError={(e)=>e.target.src=`https://picsum.photos/seed/${news.title.replace(/\s+/g,'')}/200/200`}/>
             </div>
@@ -606,7 +604,7 @@ const GamingPage = ({ articles }) => {
 };
 
 // 5. MOVIE LOVERS (EXISTING)
-const MovieLoversPage = () => {
+const MovieLoversPage = ({ onArticleClick }) => {
   const news = useMemo(() => generateMovieNews(), []);
   return (
     <div className="p-6 bg-black min-h-screen text-white">
@@ -616,7 +614,7 @@ const MovieLoversPage = () => {
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {news.map((item, i) => (
-           <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer hover:border-red-600 transition-colors">
+           <div key={i} onClick={() => onArticleClick(item)} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer hover:border-red-600 transition-colors">
               <div className="h-48 overflow-hidden relative">
                  <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="movie" />
                  <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">LIVE FEED</div>
@@ -633,7 +631,7 @@ const MovieLoversPage = () => {
 };
 
 // 6. HEALTH & FITNESS (EXISTING)
-const HealthPage = () => {
+const HealthPage = ({ onArticleClick }) => {
   const tips = useMemo(() => generateHealthTips(), []);
   return (
     <div className="p-6">
@@ -643,7 +641,7 @@ const HealthPage = () => {
       </div>
       <div className="grid md:grid-cols-2 gap-8">
         {tips.map((tip, i) => (
-          <div key={i} className="flex bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
+          <div key={i} onClick={() => onArticleClick(tip)} className="flex bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer">
             <div className="w-1/3"><img src={tip.img} className="w-full h-full object-cover" alt="health" onError={(e) => e.target.src=`https://picsum.photos/seed/${tip.id}/800/600`} /></div>
             <div className="w-2/3 p-5 flex flex-col justify-center">
               <h3 className="font-bold text-lg text-gray-800 mb-2">{tip.title}</h3>
@@ -747,7 +745,7 @@ const HoroscopePage = () => {
 };
 
 // 9. CRYPTO WATCH (NEW)
-const CryptoPage = ({ articles }) => {
+const CryptoPage = ({ articles, onArticleClick }) => {
   const cryptoNews = articles.filter(a => a.category === "Crypto");
   const [prices, setPrices] = useState([
     { name: "Bitcoin", sym: "BTC", price: 65120, change: 1.2 },
@@ -780,12 +778,11 @@ const CryptoPage = ({ articles }) => {
 
       <div className="grid md:grid-cols-3 gap-6">
         {cryptoNews.length > 0 ? cryptoNews.map((news, i) => (
-          <div key={i} className="bg-indigo-900 border border-indigo-800 rounded-xl overflow-hidden hover:border-indigo-600 transition">
+          <div key={i} onClick={() => onArticleClick(news)} className="bg-indigo-900 border border-indigo-800 rounded-xl overflow-hidden hover:border-indigo-600 transition cursor-pointer">
              <div className="h-40 overflow-hidden"><img src={news.image} className="w-full h-full object-cover" alt="crypto" onError={(e)=>e.target.src=`https://picsum.photos/seed/${news.title.replace(/\s+/g,'')}/200/200`}/></div>
              <div className="p-4">
                 <span className="text-xs text-indigo-400 font-bold mb-2 block">{news.source}</span>
                 <h3 className="font-bold text-white mb-2">{news.title}</h3>
-                <a href={news.link} target="_blank" className="text-xs text-indigo-300 hover:text-white flex items-center">Read Source <ExternalLink className="h-3 w-3 ml-1"/></a>
              </div>
           </div>
         )) : <div className="col-span-3 text-center py-12 text-indigo-400">Loading blockchain data...</div>}
@@ -795,7 +792,7 @@ const CryptoPage = ({ articles }) => {
 };
 
 // 10. LIFESTYLE (NEW)
-const LifestylePage = ({ articles }) => {
+const LifestylePage = ({ articles, onArticleClick }) => {
   const lifestyleNews = articles.filter(a => a.category === "Lifestyle");
   return (
      <div className="p-6 bg-stone-100 min-h-screen">
@@ -805,7 +802,7 @@ const LifestylePage = ({ articles }) => {
         </div>
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
            {lifestyleNews.length > 0 ? lifestyleNews.map((item, i) => (
-              <div key={i} className="break-inside-avoid bg-white p-4 rounded-none shadow-lg border-b-4 border-stone-800">
+              <div key={i} onClick={() => onArticleClick(item)} className="break-inside-avoid bg-white p-4 rounded-none shadow-lg border-b-4 border-stone-800 cursor-pointer hover:shadow-xl transition-shadow">
                  <div className="mb-4 overflow-hidden"><img src={item.image} className="w-full object-cover grayscale hover:grayscale-0 transition-all duration-700" alt="style" onError={(e)=>e.target.src=`https://picsum.photos/seed/${item.title.replace(/\s+/g,'')}/400/500`}/></div>
                  <h3 className="font-serif text-xl font-bold text-stone-900 mb-2">{item.title}</h3>
                  <p className="text-stone-600 text-sm font-light leading-relaxed">{item.summary}</p>
@@ -919,7 +916,27 @@ const App = () => {
   const [activeTab, setActiveTab] = useState("Home");
   const [searchQuery, setSearchQuery] = useState(""); 
   const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [user, setUser] = useState(null);
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // --- AUTHENTICATION ---
+  useEffect(() => {
+    if (!auth) return;
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Auth failed:", err);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
 
   // --- GLOBAL FETCH ENGINE ---
   const fetchNews = async () => {
@@ -973,29 +990,37 @@ const App = () => {
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
-    if(newsletterEmail && db) {
+    if(newsletterEmail && db && user) {
         try {
-            await addDoc(collection(db, "newsletter_subs"), { email: newsletterEmail, time: serverTimestamp() });
-            alert("Subscribed!");
+            // Updated to use the correct public data path for this environment
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', "newsletter_subs"), { 
+              email: newsletterEmail, 
+              time: serverTimestamp(),
+              uid: user.uid
+            });
+            alert("Subscribed successfully!");
             setNewsletterEmail("");
-        } catch(e) { alert("Error subscribing"); }
+        } catch(e) { 
+          console.error(e);
+          alert("Error subscribing. Please try again."); 
+        }
     } else {
-        alert("Subscribed! (Demo Mode)");
+        alert("Subscribed! (Demo Mode - Database not connected)");
         setNewsletterEmail("");
     }
   };
 
   const renderContent = () => {
-    if (activeTab === "Conspiracy") return <ConspiracyPage />;
-    if (activeTab === "MovieLovers") return <MovieLoversPage />; 
-    if (activeTab === "Health") return <HealthPage />;
+    if (activeTab === "Conspiracy") return <ConspiracyPage onArticleClick={setSelectedArticle} />;
+    if (activeTab === "MovieLovers") return <MovieLoversPage onArticleClick={setSelectedArticle} />; 
+    if (activeTab === "Health") return <HealthPage onArticleClick={setSelectedArticle} />;
     if (activeTab === "GoodReads") return <GoodReadsPage />;
     if (activeTab === "Horoscope") return <HoroscopePage />;
-    if (activeTab === "Markets") return <MarketsPage />;
+    if (activeTab === "Markets") return <MarketsPage onArticleClick={setSelectedArticle} />;
     if (activeTab === "History") return <HistoryPage />;
-    if (activeTab === "Gaming") return <GamingPage articles={articles} />;
-    if (activeTab === "Crypto") return <CryptoPage articles={articles} />;
-    if (activeTab === "Lifestyle") return <LifestylePage articles={articles} />;
+    if (activeTab === "Gaming") return <GamingPage articles={articles} onArticleClick={setSelectedArticle} />;
+    if (activeTab === "Crypto") return <CryptoPage articles={articles} onArticleClick={setSelectedArticle} />;
+    if (activeTab === "Lifestyle") return <LifestylePage articles={articles} onArticleClick={setSelectedArticle} />;
 
     const displayArticles = articles.filter(article => {
       if (searchQuery) {
