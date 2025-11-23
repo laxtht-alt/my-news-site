@@ -3,7 +3,7 @@ import {
   Newspaper, RefreshCw, DollarSign, ExternalLink, TrendingUp, Clock, 
   Share2, Menu, X, Info, MessageCircle, Send, ThumbsUp, User, Globe, 
   Cpu, Briefcase, Vote, Sun, Cloud, CloudRain, Wind, MapPin, Settings, 
-  Search, Bell, MoreVertical, Mail, PlayCircle, Loader
+  Search, Bell, MoreVertical, Mail, PlayCircle, Loader, Sparkles
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -33,7 +33,6 @@ try {
 }
 
 // --- REAL NEWS SOURCES (RSS FEEDS) ---
-// We use a public proxy (rss2json) to read these feeds in the browser
 const NEWS_SOURCES = [
   { name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml", category: "World" },
   { name: "NY Times", url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", category: "Politics" },
@@ -42,6 +41,21 @@ const NEWS_SOURCES = [
   { name: "BBC Tech", url: "http://feeds.bbci.co.uk/news/technology/rss.xml", category: "Technology" },
   { name: "ESPN", url: "https://www.espn.com/espn/rss/news", category: "Sports" }
 ];
+
+// --- AI CONTENT GENERATOR ---
+// This function simulates an AI writing a full article from a summary.
+// In a production app, you would replace this logic with a real fetch to the Gemini API.
+const generateFullArticle = (title, summary, source) => {
+  const intro = `(AI Reporting) – ${summary} This development marks a significant turning point in the ongoing narrative surrounding this issue.`;
+  
+  const body1 = `According to reports from ${source}, the situation has evolved rapidly over the last 24 hours. Key stakeholders have weighed in, suggesting that the immediate impact could be far-reaching. "This is unprecedented," noted one analyst close to the matter. The sheer scale of the event implies that we may be seeing a paradigm shift in how these matters are handled moving forward.`;
+  
+  const body2 = `Historical context suggests that this wasn't entirely unexpected, yet the timing has caught many off guard. Experts argue that while short-term volatility is expected, the long-term outlook remains uncertain. Data from previous similar events indicates a recovery period of several months, but ${source} sources warn that unique factors here could complicate that timeline.`;
+  
+  const body3 = `Furthermore, global reactions have been pouring in. Markets have reacted cautiously, and social media sentiment appears divided. As more details emerge, it becomes clear that the ramifications will extend beyond the immediate sector. We will continue to monitor the situation and update this report as new information becomes available.`;
+
+  return `${intro}\n\n${body1}\n\n${body2}\n\n${body3}`;
+};
 
 // --- COMPONENTS ---
 
@@ -81,9 +95,23 @@ const WeatherWidget = () => {
 };
 
 const ArticleReader = ({ article, onClose }) => {
-  // If we don't have full content (RSS only gives summary), we simulate the "Full Blog" here
-  // In a real app with Gemini API, we would send the summary to Gemini and ask it to write the blog.
-  const fullContent = article.content || article.summary + "\n\n(Full detailed report loading from source...) \n\nThis story is developing. Our AI agents are currently aggregating more details from " + article.source + ". The situation involves multiple stakeholders and significant implications for the sector. Early reports indicate that this event could reshape current trends.";
+  const [fullContent, setFullContent] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate AI Generation Delay
+    const timer = setTimeout(() => {
+      // If RSS provided full content, use it. Otherwise, generate it.
+      const content = article.content && article.content.length > 200 
+        ? article.content 
+        : generateFullArticle(article.title, article.summary, article.source);
+      
+      setFullContent(content);
+      setLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [article]);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center animate-in fade-in duration-200">
@@ -106,13 +134,31 @@ const ArticleReader = ({ article, onClose }) => {
           </div>
 
           <div className="prose prose-lg text-gray-800 max-w-none">
-            <p className="text-xl font-medium leading-relaxed mb-6">{article.summary}</p>
-            <p className="text-base leading-relaxed whitespace-pre-line">{fullContent}</p>
+            {loading ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="flex items-center text-blue-600 font-medium mb-4">
+                  <Sparkles className="h-5 w-5 mr-2 animate-spin" />
+                  AI Agent is writing full report from {article.source} data...
+                </div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+              </div>
+            ) : (
+              <>
+                 <p className="text-xl font-medium leading-relaxed mb-6 border-l-4 border-blue-500 pl-4 italic bg-gray-50 p-4 rounded-r-lg">
+                   "{article.summary}"
+                 </p>
+                 <div className="whitespace-pre-line leading-relaxed">
+                   {fullContent}
+                 </div>
+              </>
+            )}
           </div>
 
           <div className="mt-12 p-6 bg-gray-50 rounded-xl border border-gray-200">
             <h4 className="font-bold text-gray-900 mb-2">Source Reference</h4>
-            <p className="text-sm text-gray-600 mb-4">This article was aggregated from external sources. Read the original reporting here:</p>
+            <p className="text-sm text-gray-600 mb-4">This article was aggregated via RSS. View the original source below:</p>
             <a href={article.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-blue-600 font-bold hover:underline">
               Read original on {article.source} <ExternalLink className="h-4 w-4 ml-2" />
             </a>
@@ -126,7 +172,6 @@ const ArticleReader = ({ article, onClose }) => {
 const App = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [geminiKey, setGeminiKey] = useState("");
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [activeTab, setActiveTab] = useState("Home");
   const [newsletterEmail, setNewsletterEmail] = useState("");
@@ -138,8 +183,6 @@ const App = () => {
     setLoading(true);
     let allNews = [];
 
-    // We loop through our sources and fetch the RSS feeds
-    // Note: We use rss2json.com because browsers block direct RSS access (CORS)
     const promises = NEWS_SOURCES.map(async (source) => {
       try {
         const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}`);
@@ -155,7 +198,7 @@ const App = () => {
             category: source.category,
             summary: item.description ? item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + "..." : "Click to read full coverage...",
             link: item.link,
-            content: item.content // Sometimes RSS has full content, sometimes not
+            content: item.content // We capture this, but RSS often leaves it empty
           }));
         }
         return [];
@@ -166,17 +209,15 @@ const App = () => {
     });
 
     const results = await Promise.all(promises);
-    allNews = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)); // Sort by newest
+    allNews = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
     
-    // Remove duplicates and limit initial load
     setArticles(allNews.slice(0, 30));
     setLoading(false);
   };
 
-  // Initial Fetch & Auto-Update Interval
   useEffect(() => {
     fetchNews();
-    const interval = setInterval(fetchNews, 60000); // Update every 60 seconds
+    const interval = setInterval(fetchNews, 60000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -188,10 +229,12 @@ const App = () => {
             alert("Subscribed!");
             setNewsletterEmail("");
         } catch(e) { alert("Error subscribing"); }
+    } else {
+        alert("Demo Mode: Subscription simulated!");
+        setNewsletterEmail("");
     }
   };
 
-  // Filter Logic
   const displayArticles = activeTab === "Home" ? articles : articles.filter(a => a.category === activeTab || activeTab === "For you");
 
   return (
