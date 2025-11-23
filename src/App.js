@@ -11,12 +11,12 @@ import { getAuth, signInAnonymously } from 'firebase/auth';
 
 // --- CONFIGURATION ---
 const firebaseConfig = {
-  apiKey: "", 
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCr50KAccK3meENaqZYazBjtPbRSHmtwS0", 
+  authDomain: "newsai-portal.firebaseapp.com",
+  projectId: "newsai-portal",
+  storageBucket: "newsai-portal.firebasestorage.app",
+  messagingSenderId: "99035161662",
+  appId: "1:99035161662:web:a540b69d1af42f635d1d6f"
 };
 
 // Initialize Firebase
