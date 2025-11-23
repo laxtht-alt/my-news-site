@@ -33,7 +33,7 @@ try {
 }
 
 // --- GEMINI API SETUP ---
-const apiKey = ""; // API Key injected by environment
+const apiKey = "AIzaSyA2wcHNOMl3zBkmeVv-JCTnrilnoCit_To"; // API Key injected by environment
 
 const callGeminiAPI = async (prompt) => {
   if (!apiKey) return null;
