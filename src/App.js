@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- CONFIGURATION ---
-// Hardcoded configuration for local development to avoid "no-undef" errors
+// Hardcoded configuration for local development
 const firebaseConfig = {
   apiKey: "AIzaSyCr50KAccK3MeENaqZYaZBjTPbRSHmtwS0", 
   authDomain: "newsai-portal.firebaseapp.com",
@@ -23,7 +23,6 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let db, auth;
-// Use the projectId as the default appId for storage paths
 const appId = "newsai-portal";
 
 try {
@@ -926,11 +925,8 @@ const App = () => {
     if (!auth) return;
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        // Simplified for local dev to avoid linter errors
+        await signInAnonymously(auth);
       } catch (err) {
         console.error("Auth failed:", err);
       }
